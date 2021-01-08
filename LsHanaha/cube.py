@@ -31,13 +31,6 @@ class Cube:
     moves = 'FRUBLD'
     colors: Dict[int, str] = {0: 'Y', 1: 'G', 2: 'O', 3: 'B', 4: 'R', 5: 'W'}
 
-    command_color: Dict[str, str] = {'U': 'Y',
-                                     'D': 'W',
-                                     'F': 'G',
-                                     'R': 'O',
-                                     'L': 'R',
-                                     'B': 'B'}
-
     faces: Dict[str, Dict[str, Dict[str, Union[str, List[int]]]]] = \
         {'Y': _neighbours.copy(),
          'W': _neighbours.copy(),
@@ -83,26 +76,37 @@ class Cube:
                              'R': 289360691352306692,
                              'W': 361700864190383365}
 
+    _default_command_color: Dict[str, str] = {'U': 'Y',
+                                              'D': 'W',
+                                              'F': 'G',
+                                              'R': 'O',
+                                              'L': 'R',
+                                              'B': 'B'}
+
+    _default_color_command = {'Y': 'U', 'W': 'D', 'G': 'F', 'O': 'R',
+                              'R': 'L', 'B': 'B'}
+
     def __init__(self):
         self.solution: List[str] = []
+        self._current_command_color = self._default_command_color.copy()
 
     def __repr__(self):
-        green = self._get_face_colors('G', [1, 2, 3, 8, 4, 7, 6, 5])
-        green = ['  ' * 5 + row for row in green]
+        yellow = self._get_face_colors('Y', [1, 2, 3, 8, 4, 7, 6, 5])
+        yellow = ['  ' * 5 + row for row in yellow]
 
-        red = self._get_face_colors('R', [3, 4, 5, 2, 6, 1, 8, 7])
-        white = self._get_face_colors('W', [1, 2, 3, 8, 4, 7, 6, 5])
-        orange = self._get_face_colors('O', [7, 8, 1, 6, 2, 5, 4, 3])
-        yellow = self._get_face_colors('Y', [5, 6, 7, 4, 8, 3, 2, 1])
+        red = self._get_face_colors('R', [1, 2, 3, 8, 4, 7, 6, 5])
+        green = self._get_face_colors('G', [1, 2, 3, 8, 4, 7, 6, 5])
+        orange = self._get_face_colors('O', [1, 2, 3, 8, 4, 7, 6, 5])
+        blue = self._get_face_colors('B', [1, 2, 3, 8, 4, 7, 6, 5])
         four = []
-        for _temp in zip(red, white, orange, yellow):
+        for _temp in zip(red, green, orange, blue):
             four.append('   '.join(_temp))
 
-        blue = self._get_face_colors('B', [5, 6, 7, 4, 8, 3, 2, 1])
-        blue = ['  ' * 5 + row for row in blue]
-        return "{}\n\n{}\n\n{}\n\n{}\n".format('\n'.join(green),
+        white = self._get_face_colors('W', [1, 2, 3, 8, 4, 7, 6, 5])
+        white = ['  ' * 5 + row for row in white]
+        return "{}\n\n{}\n\n{}\n\n{}\n".format('\n'.join(yellow),
                                                '\n'.join(four),
-                                               '\n'.join(blue),
+                                               '\n'.join(white),
                                                '#' * 120)
 
     def _get_face_colors(self, face_color: str, masks: List[int]) \
@@ -137,10 +141,10 @@ class Cube:
     def shuffle(self, count: int):
         pass
 
-    def rotation(self, command: str) -> None:
+    def face_rotation(self, command: str) -> None:
 
         command = command.upper()
-        # command = self._redefine_command(command)  # for cube rotation purpose
+        command = self._redefine_command(command)  # for cube rotation purpose
         self.solution.append(command)
 
         counterclockwise = False
@@ -154,26 +158,26 @@ class Cube:
         self._rotate_neighbours(color, counterclockwise)
 
     def _define_color(self, command: str) -> str:
-        return self.command_color[command]
+        return self._default_command_color[command]
 
     def _rotate_face(self, command: str, counterclockwise: bool) \
             -> None:
 
         face = self.state[command[0]]
-        if counterclockwise:
+        if not counterclockwise:
             mask = 18446462598732840960
             clear_mask = 281474976710655
 
-            rot_value = face & mask >> 48
+            rot_value = (face & mask) >> 48
             face = face & clear_mask
 
             face = face << 16
-            face = face ^ rot_value
+            face = face | rot_value
         else:
             mask = 65535
-            rot_value = face & mask << 48
+            rot_value = (face & mask) << 48
             face = face >> 16
-            face = rot_value ^ face
+            face = rot_value | face
 
         self.state[command[0]] = face
 
@@ -264,10 +268,81 @@ class Cube:
         neighbour = neighbour | new_value
         return neighbour
 
+    def _redefine_command(self, command: str) -> str:
+
+        color = self._current_command_color[command[0]]
+        default_command = self._default_color_command[color]
+        return default_command + command[1:]
+
+    def rotate_x(self, counterclockwise: bool = False) -> None:
+
+        temp = self._current_command_color['U']
+
+        if counterclockwise:
+
+            self._current_command_color['U'] = self._current_command_color['B']
+            self._current_command_color['B'] = self._current_command_color['D']
+            self._current_command_color['D'] = self._current_command_color['F']
+            self._current_command_color['F'] = temp
+        else:
+
+            self._current_command_color['U'] = self._current_command_color['F']
+            self._current_command_color['F'] = self._current_command_color['D']
+            self._current_command_color['D'] = self._current_command_color['B']
+            self._current_command_color['B'] = temp
+
+    def rotate_y(self, counterclockwise: bool = False) -> None:
+
+        temp = self._current_command_color['F']
+
+        if counterclockwise:
+
+            self._current_command_color['F'] = self._current_command_color['L']
+            self._current_command_color['L'] = self._current_command_color['B']
+            self._current_command_color['B'] = self._current_command_color['R']
+            self._current_command_color['R'] = temp
+        else:
+
+            self._current_command_color['F'] = self._current_command_color['R']
+            self._current_command_color['R'] = self._current_command_color['B']
+            self._current_command_color['B'] = self._current_command_color['L']
+            self._current_command_color['L'] = temp
+
+    def rotate_z(self, counterclockwise: bool = False) -> None:
+        _default_command_color: Dict[str, str] = {'U': 'Y',
+                                                  'D': 'W',
+                                                  'R': 'O',
+                                                  'L': 'R'}
+
+        temp = self._current_command_color['U']
+
+        if counterclockwise:
+
+            self._current_command_color['U'] = self._current_command_color['R']
+            self._current_command_color['R'] = self._current_command_color['D']
+            self._current_command_color['D'] = self._current_command_color['L']
+            self._current_command_color['L'] = temp
+        else:
+
+            self._current_command_color['U'] = self._current_command_color['L']
+            self._current_command_color['L'] = self._current_command_color['D']
+            self._current_command_color['D'] = self._current_command_color['R']
+            self._current_command_color['R'] = temp
+
 
 if __name__ == '__main__':
     cube = Cube()
+    # print(cube)
+    # cube.rotate_y(counterclockwise=True)
+    # cube.rotate_x(counterclockwise=True)
+    # cube.rotate_z(counterclockwise=True)
+    cube.rotate_x()
+    cube.rotate_y()
+    cube.rotate_z()
+    cube.face_rotation("f")
     print(cube)
-    cube.rotation("d")
+    cube.face_rotation('U')
+    print(cube)
+    cube.face_rotation('L')
     print(cube)
 
